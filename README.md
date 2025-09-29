@@ -15,11 +15,13 @@ The Twitter Scraper Telegram Bot is a Python-based bot developed to scrape tweet
 ## Installation
 
 1. Clone the repository to your local machine:
+
 ```bash
 git clone https://github.com/navtemmt/Twitter-Scraper-Telegram-Bot.git
 ```
 
 2. Install the required dependencies using pip:
+
 ```bash
 cd Twitter-Scraper-Telegram-Bot
 pip install -r requirements.txt
@@ -33,108 +35,94 @@ pip install -r requirements.txt
 
 ## Configuration
 
-### Twitter Users Configuration
+All configuration is now handled through a single file: `combined_config.json`. This file contains both the list of Twitter users to monitor and their routing destinations.
 
-Edit `influencers.json` to specify which Twitter users to scrape:
+### Configuration Structure
 
-```json
-[
-  "elonmusk",
-  "naval",
-  "balajis"
-]
-```
-
-### Multi-User to Multi-Topic Mapping
-
-The bot supports routing different Twitter users to different Telegram destinations using `mapping_config.json`. This allows you to:
-
-- Send tweets from different Twitter users to different Telegram chats
-- Send tweets to specific topics in Telegram forum groups
-- Have a default destination for unmapped users
-
-#### Example mapping_config.json
+Edit `combined_config.json` to configure which Twitter users to scrape and where their tweets should be sent:
 
 ```json
 {
-  "mappings": {
-    "elonmusk": {
-      "chat_id": -1001234567890,
+  "users": [
+    {
+      "username": "elonmusk",
+      "chat_id": "-1001234567890",
       "topic_id": 123
     },
-    "naval": {
-      "chat_id": -1001234567890,
+    {
+      "username": "naval",
+      "chat_id": "-1001234567890",
       "topic_id": 456
     },
-    "balajis": {
-      "chat_id": -1009876543210,
+    {
+      "username": "balajis",
+      "chat_id": "-1009876543210",
       "topic_id": null
     }
-  },
+  ],
   "default": {
-    "chat_id": -1001111111111,
+    "chat_id": "-1001111111111",
     "topic_id": null
   }
 }
 ```
 
-#### Configuration Options
+### Configuration Options
 
-- **mappings**: Object containing user-specific routing configurations
-  - **key**: Twitter username (without @)
-  - **chat_id**: Telegram chat ID (negative for groups/channels)
-  - **topic_id**: Forum topic ID (use `null` for regular groups/channels)
+- **users**: Array of user configurations, each containing:
+  - `username`: Twitter username (without @)
+  - `chat_id`: Telegram chat ID (negative for groups/channels)
+  - `topic_id`: Forum topic ID (use `null` for regular groups/channels)
 
-- **default**: Fallback configuration for unmapped Twitter users
-  - **chat_id**: Default Telegram destination
-  - **topic_id**: Default topic ID (`null` for no topic)
+- **default**: Fallback configuration for any errors or unmapped scenarios:
+  - `chat_id`: Default Telegram destination
+  - `topic_id`: Default topic ID (`null` for no topic)
 
-#### Setting Up Per-User Routing
+### Setting Up Configuration
 
-1. **Get Chat IDs**: 
+1. **Get Chat IDs:**
    - For channels: Forward a message from the channel to @userinfobot
-   - For groups: Add @userinfobot to the group and use `/start`
+   - For groups: Add @userinfobot to the group and use /start
    - Chat IDs for groups/channels are negative numbers
 
-2. **Get Topic IDs** (for forum groups only):
+2. **Get Topic IDs (for forum groups only):**
    - Right-click on a topic in the forum group
    - Copy the link and extract the topic ID from the URL
-   - Example: `https://t.me/c/1234567890/123/456` → topic ID is `456`
+   - Example: https://t.me/c/1234567890/123/456 → topic ID is 456
 
-3. **Configure mappings**:
-   - Create/edit `mapping_config.json` with your specific routing rules
+3. **Configure users:**
+   - Add each Twitter user to the `users` array
+   - Specify their destination `chat_id` and `topic_id`
    - Set `topic_id` to `null` for regular groups/channels
    - Set `topic_id` to a number for forum topics
 
 ### Other Configuration Files
 
-- **`advertisement.json`**: Configure promotional messages to include with tweets
-- **`templates.json`**: Set up message templates per chat
-- **`admins.json`**: Define bot administrators and their permissions
+- **advertisement.json**: Configure promotional messages to include with tweets
+- **templates.json**: Set up message templates per chat
+- **admins.json**: Define bot administrators and their permissions
 
 ## Usage
 
-1. Configure all JSON files according to your needs:
-   - `influencers.json`: List of Twitter usernames to monitor
-   - `mapping_config.json`: Routing configuration for users and destinations
-   - `advertisement.json`: Advertisement content (optional)
+1. Configure `combined_config.json` with your Twitter users and Telegram destinations
+2. (Optional) Configure `advertisement.json` for advertisement content
+3. Start the bot:
 
-2. Start the bot:
 ```bash
 python main.py
 ```
 
-3. The bot will:
+4. The bot will:
    - Start scraping tweets from configured Twitter users every 5 minutes
-   - Route tweets to appropriate Telegram destinations based on mapping configuration
+   - Route tweets to appropriate Telegram destinations based on configuration
    - Send tweets to specific forum topics if configured
    - Include advertisements and custom formatting
 
-**Note**: It is recommended to run the bot on a server or in the background to ensure continuous scraping and message delivery.
+Note: It is recommended to run the bot on a server or in the background to ensure continuous scraping and message delivery.
 
 ### Bot Commands
 
-- `/start`: Initialize the bot (for authorized users only)
+- **/start**: Initialize the bot (for authorized users only)
 - Bot supports group selection for administrators
 
 ## File Structure
@@ -143,22 +131,21 @@ python main.py
 Twitter-Scraper-Telegram-Bot/
 ├── main.py                 # Main bot script
 ├── requirements.txt        # Python dependencies
-├── influencers.json       # Twitter users to monitor
-├── mapping_config.json    # User-to-destination routing
-├── advertisement.json     # Advertisement content
-├── templates.json         # Message templates
-├── admins.json           # Bot administrators
-├── message_ids.json      # Message tracking (auto-generated)
-├── enabled_groups.json   # Enabled groups (auto-generated)
-├── selected_groups.json  # Selected groups (auto-generated)
-└── tweets-data.json      # Scraped tweet data (auto-generated)
+├── combined_config.json    # User list and routing configuration
+├── advertisement.json      # Advertisement content
+├── templates.json          # Message templates
+├── admins.json            # Bot administrators
+├── message_ids.json       # Message tracking (auto-generated)
+├── enabled_groups.json    # Enabled groups (auto-generated)
+├── selected_groups.json   # Selected groups (auto-generated)
+└── tweets-data.json       # Scraped tweet data (auto-generated)
 ```
 
 ## How It Works
 
 1. **Scraping**: Every 5 minutes, the bot scrapes the latest tweets (up to 20 per user) from configured Twitter accounts
 2. **Filtering**: Only tweets from the last 5 minutes are processed to avoid duplicates
-3. **Routing**: Based on `mapping_config.json`, tweets are routed to appropriate Telegram destinations
+3. **Routing**: Based on `combined_config.json`, tweets are routed to appropriate Telegram destinations
 4. **Forum Support**: If a `topic_id` is specified, tweets are sent to that specific forum topic
 5. **Message Management**: Previous messages are deleted and replaced with new ones to keep chats clean
 6. **Templates**: Custom message templates can be applied per destination
@@ -182,8 +169,8 @@ This project is licensed under the [MIT License](LICENSE). You are free to use, 
 
 The Twitter Scraper Telegram Bot makes use of the following libraries:
 
-- **[snscrape](https://github.com/JustAnotherArchivist/snscrape)** - A Python library for scraping social media websites (including Twitter).
-- **[pyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI)** - A Python wrapper for the Telegram Bot API.
-- **[schedule](https://github.com/dbader/schedule)** - Python job scheduling for humans.
+- [snscrape](https://github.com/JustAnotherArchivist/snscrape) - A Python library for scraping social media websites (including Twitter).
+- [pyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI) - A Python wrapper for the Telegram Bot API.
+- [schedule](https://github.com/dbader/schedule) - Python job scheduling for humans.
 
 Special thanks to the developers of these libraries for their contributions.
