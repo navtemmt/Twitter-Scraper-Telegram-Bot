@@ -10,19 +10,20 @@ from tqdm import tqdm
 import schedule
 import time
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Replace 'YOUR_BOT_TOKEN' with your actual bot token
-bot_token = '6285308929:AAFHF1mwb83XXt2MJhTzosY17d-m1nVqHMo'
-
+bot_token = os.getenv('BOT_TOKEN')
 # File paths
 enabled_groups_file = 'enabled_groups.json'
 combined_config_file = 'combined_config.json'
 templates_file = 'templates.json'
 message_ids_file = 'message_ids.json'
 admins_file = 'admins.json'
-
 bot = telebot.TeleBot(bot_token)
-
 # Helper functions for JSON operations
 def _load_json(file_path, default=None):
     """Load JSON file with error handling"""
@@ -33,7 +34,6 @@ def _load_json(file_path, default=None):
         return default or {}
     except (json.JSONDecodeError, IOError):
         return default or {}
-
 def _save_json(file_path, data):
     """Save data to JSON file"""
     try:
@@ -41,7 +41,6 @@ def _save_json(file_path, data):
             json.dump(data, file, indent=2)
     except IOError as e:
         print(f"Error saving {file_path}: {e}")
-
 def _safe_delete(file_path):
     """Safely delete file if exists"""
     try:
@@ -49,7 +48,6 @@ def _safe_delete(file_path):
             os.remove(file_path)
     except OSError:
         pass
-
 # Load combined configuration
 def load_combined_config():
     """Load Twitter user configuration with routing information"""
@@ -60,34 +58,25 @@ def load_combined_config():
             "topic_id": None
         }
     })
-
 def load_admins():
     return _load_json(admins_file)
-
 def load_enabled_groups():
     return _load_json(enabled_groups_file)
-
 def load_templates():
     return _load_json(templates_file)
-
 def load_message_ids():
     return _load_json(message_ids_file)
-
 def load_selected_group():
     return _load_json('selected_groups.json')
-
 def save_message_ids(message_ids):
     _save_json(message_ids_file, message_ids)
-
 def get_saved_message_id(chat_id):
     message_ids = load_message_ids()
     return message_ids.get(str(chat_id))
-
 def save_message_id(chat_id, message_id):
     message_ids = load_message_ids()
     message_ids[str(chat_id)] = message_id
     save_message_ids(message_ids)
-
 def send_message_with_link(chat_id, message, topic_id=None):
     """Send message to chat/group with optional topic_id for forum groups"""
     # Delete previous message if exists
@@ -119,7 +108,6 @@ def send_message_with_link(chat_id, message, topic_id=None):
     except Exception as e:
         print(f"Error sending message to {chat_id}: {e}")
         return None
-
 def twitter_scraper():
     """Main Twitter scraping function using combined config"""
     # Load combined configuration
@@ -242,10 +230,8 @@ def twitter_scraper():
         
         # Send message with topic support
         send_message_with_link(chat_id, combined_message, topic_id)
-
 # Bot handlers (keeping existing functionality)
 admins = load_admins()
-
 @bot.message_handler(commands=['start'])
 def handle_start_command(message):
     username = message.from_user.username
@@ -260,7 +246,6 @@ def handle_start_command(message):
             bot.send_message(message.chat.id, 'Select a group:', reply_markup=markup)
         else:
             bot.send_message(message.chat.id, 'You are not authorized to use this bot.')
-
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
 def handle_group_selection(message):
     username = message.from_user.username
@@ -281,14 +266,12 @@ def handle_group_selection(message):
             bot.send_message(message.chat.id, 'Invalid group selection.')
     else:
         bot.send_message(message.chat.id, 'You are not authorized to use this bot.')
-
 # Scheduler
 def run_twitter_scraper():
     schedule.every(5).minutes.do(twitter_scraper)
     while True:
         schedule.run_pending()
         time.sleep(1)
-
 # Start
 print("Starting Twitter Scraper Bot with combined user configuration...")
 twitter_thread = threading.Thread(target=run_twitter_scraper)
