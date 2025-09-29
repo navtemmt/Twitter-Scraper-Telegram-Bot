@@ -1,0 +1,118 @@
+{
+  "users": [
+    {
+      "username": "BitcoinMagazine",
+      "chat_id": "-1001234567890",
+      "topic_id": 123
+    },
+    {
+      "username": "SatoshiFlipper",
+      "chat_id": "-1001234567890",
+      "topic_id": 456
+    },
+    {
+      "username": "HuobiGlobal",
+      "chat_id": "-1001987654321",
+      "topic_id": 789
+    },
+    {
+      "username": "MartiniGuyYT",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "bull_bnb",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "scottmelker",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "LunarCrush",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "TheCryptoLark",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "Ashcryptoreal",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "SharksCoins",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "ObitoCrypt0",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "coingecko",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "TrueGemHunter",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "blessed_mayor",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "realdogen",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "dr_crypto_calls",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "WhaleChart",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "CryptoDude888",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "ralvero",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "eliz883",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "cryptogems555",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    },
+    {
+      "username": "nithin6364",
+      "chat_id": "-1001234567890",
+      "topic_id": null
+    }
+  ],
+  "default": {
+    "chat_id": "-1001111111111",
+    "topic_id": null
+  }
+}
