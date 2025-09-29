@@ -1,4 +1,250 @@
-# Patched file too long for editor snapshot here. Keeping previous content above up to view_templates.
+import json
+import datetime
+import threading
+import pytz
+import telebot
+from telebot import types
+import random
+import snscrape.modules.twitter as sntwitter
+from tqdm import tqdm
+import schedule
+import time
+import os
+
+# Replace 'YOUR_BOT_TOKEN' with your actual bot token
+bot_token = '6285308929:AAFHF1mwb83XXt2MJhTzosY17d-m1nVqHMo'
+
+# File paths
+enabled_groups_file = 'enabled_groups.json'
+influencers_file = 'influencers.json'
+templates_file = 'templates.json'
+message_ids_file = 'message_ids.json'
+admins_file = 'admins.json'
+mapping_config_file = 'mapping_config.json'
+
+bot = telebot.TeleBot(bot_token)
+
+# Helper functions for JSON operations
+def _load_json(file_path, default=None):
+    """Load JSON file with error handling"""
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                return json.load(file)
+        return default or {}
+    except (json.JSONDecodeError, IOError):
+        return default or {}
+
+def _save_json(file_path, data):
+    """Save data to JSON file"""
+    try:
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
+    except IOError as e:
+        print(f"Error saving {file_path}: {e}")
+
+def _safe_delete(file_path):
+    """Safely delete file if exists"""
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except OSError:
+        pass
+
+# Load mapping configuration
+def load_mapping_config():
+    """Load Twitter user to Telegram topic mapping configuration"""
+    return _load_json(mapping_config_file, {
+        "mappings": {},
+        "default": {
+            "chat_id": None,
+            "topic_id": None
+        }
+    })
+
+def load_admins():
+    return _load_json(admins_file)
+
+def load_enabled_groups():
+    return _load_json(enabled_groups_file)
+
+def load_templates():
+    return _load_json(templates_file)
+
+def load_message_ids():
+    return _load_json(message_ids_file)
+
+def load_selected_group():
+    return _load_json('selected_groups.json')
+
+def save_message_ids(message_ids):
+    _save_json(message_ids_file, message_ids)
+
+def get_saved_message_id(chat_id):
+    message_ids = load_message_ids()
+    return message_ids.get(str(chat_id))
+
+def save_message_id(chat_id, message_id):
+    message_ids = load_message_ids()
+    message_ids[str(chat_id)] = message_id
+    save_message_ids(message_ids)
+
+def send_message_with_link(chat_id, message, topic_id=None):
+    """Send message to chat/group with optional topic_id for forum groups"""
+    # Delete previous message if exists
+    message_id = get_saved_message_id(chat_id)
+    if message_id:
+        try:
+            bot.delete_message(chat_id, message_id)
+        except:
+            pass
+    
+    # Prepare kwargs for bot.send_message
+    send_kwargs = {
+        'chat_id': chat_id,
+        'text': message,
+        'parse_mode': 'Markdown',
+        'disable_web_page_preview': True
+    }
+    
+    # Add message_thread_id if topic_id is provided
+    if topic_id:
+        send_kwargs['message_thread_id'] = topic_id
+    
+    # Send the new message
+    try:
+        sent_message = bot.send_message(**send_kwargs)
+        # Save the message ID for future reference
+        save_message_id(chat_id, sent_message.message_id)
+        return sent_message.message_id
+    except Exception as e:
+        print(f"Error sending message to {chat_id}: {e}")
+        return None
+
+def twitter_scraper():
+    """Main Twitter scraping function with multi-user to multi-topic mapping"""
+    # Load influencers list
+    with open('influencers.json', 'r') as json_file:
+        usernames = json.load(json_file)
+    
+    n_tweets = 20
+    time_limit = datetime.datetime.now(pytz.utc) - datetime.timedelta(minutes=5)
+    
+    # Load mapping configuration
+    mapping_config = load_mapping_config()
+    mappings = mapping_config.get('mappings', {})
+    default_config = mapping_config.get('default', {})
+    
+    # Load advertisements
+    try:
+        with open('advertisement.json', 'r', encoding='utf-8-sig') as ads_file:
+            ads_data = json.loads(ads_file.read())
+        random_ad = random.choice(ads_data["adsList"])
+    except:
+        random_ad = {"text": "No ads available", "link": "#"}
+    
+    # Load templates
+    templates = load_templates()
+    
+    all_tweets_data = {}
+    
+    # Scrape tweets for each username
+    for username in usernames:
+        tweets_data = []
+        
+        try:
+            scraper = sntwitter.TwitterUserScraper(username)
+            
+            for i, tweet in tqdm(enumerate(scraper.get_items()), total=n_tweets):
+                if tweet.date.replace(tzinfo=pytz.UTC) < time_limit:
+                    break
+                
+                data = {
+                    "id": tweet.id,
+                    "url": tweet.url,
+                    "username": username
+                }
+                
+                tweets_data.append(data)
+                if i + 1 >= n_tweets:
+                    break
+        except Exception as e:
+            print(f"Error scraping tweets for {username}: {e}")
+            continue
+        
+        if tweets_data:
+            all_tweets_data[username] = tweets_data
+    
+    # Save tweets data
+    with open('tweets-data.json', "w") as json_file:
+        json.dump(all_tweets_data, json_file)
+    
+    # Send tweets using mapping configuration
+    if not all_tweets_data:
+        print("No tweets available.")
+        return
+    
+    print("Preparing Tweets...")
+    
+    # Process each Twitter user and their mapped destinations
+    for twitter_username, tweets in all_tweets_data.items():
+        if not tweets:
+            continue
+            
+        # Get mapping for this Twitter user
+        user_mapping = mappings.get(twitter_username)
+        
+        if not user_mapping:
+            # Use default mapping if specific user mapping not found
+            if default_config.get('chat_id'):
+                user_mapping = default_config
+            else:
+                print(f"No mapping found for {twitter_username} and no default config")
+                continue
+        
+        # Extract chat_id and topic_id from mapping
+        chat_id = user_mapping.get('chat_id')
+        topic_id = user_mapping.get('topic_id')
+        
+        if not chat_id:
+            print(f"No chat_id configured for {twitter_username}")
+            continue
+            
+        # Get template for this chat
+        chat_id_str = str(chat_id)
+        template_text = ""
+        if chat_id_str in templates:
+            template_text = templates[chat_id_str].get("template_text", "")
+        
+        # Build message content
+        ad_message = f"Ad: [{random_ad['text']}]({random_ad['link']})"
+        title = f"🚀 Tweets from @{twitter_username}\n\n"
+        message = ""
+        
+        # Add tweet links
+        for tweet_data in tweets:
+            if 'id' in tweet_data and 'username' in tweet_data:
+                url = "https://twitter.com/intent/tweet?text=" + str(template_text) + "&in_reply_to=" + str(tweet_data['id'])
+                username_display = tweet_data['username']
+                message += f"[{username_display}]({url}) || "
+        
+        message = message.rstrip(" || ")
+        
+        if not message:
+            print(f"No tweet links generated for {twitter_username}")
+            continue
+        
+        combined_message = title + message + '\n\n' + ad_message
+        
+        print(f"Sending tweets for {twitter_username} to {chat_id} (topic: {topic_id})")
+        print(combined_message)
+        
+        # Send message with topic support
+        send_message_with_link(chat_id, combined_message, topic_id)
+
+# Bot handlers (keeping existing functionality)
+admins = load_admins()
+
 @bot.message_handler(commands=['start'])
 def handle_start_command(message):
     username = message.from_user.username
@@ -36,7 +282,6 @@ def handle_group_selection(message):
         bot.send_message(message.chat.id, 'You are not authorized to use this bot.')
 
 # Scheduler
-
 def run_twitter_scraper():
     schedule.every(5).minutes.do(twitter_scraper)
     while True:
@@ -44,7 +289,7 @@ def run_twitter_scraper():
         time.sleep(1)
 
 # Start
-
+print("Starting Twitter Scraper Bot with multi-user to multi-topic mapping support...")
 twitter_thread = threading.Thread(target=run_twitter_scraper)
 twitter_thread.start()
 bot.polling(none_stop=True, timeout=123)
