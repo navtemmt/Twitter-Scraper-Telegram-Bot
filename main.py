@@ -16,11 +16,10 @@ bot_token = '6285308929:AAFHF1mwb83XXt2MJhTzosY17d-m1nVqHMo'
 
 # File paths
 enabled_groups_file = 'enabled_groups.json'
-influencers_file = 'influencers.json'
+combined_config_file = 'combined_config.json'
 templates_file = 'templates.json'
 message_ids_file = 'message_ids.json'
 admins_file = 'admins.json'
-mapping_config_file = 'mapping_config.json'
 
 bot = telebot.TeleBot(bot_token)
 
@@ -51,11 +50,11 @@ def _safe_delete(file_path):
     except OSError:
         pass
 
-# Load mapping configuration
-def load_mapping_config():
-    """Load Twitter user to Telegram topic mapping configuration"""
-    return _load_json(mapping_config_file, {
-        "mappings": {},
+# Load combined configuration
+def load_combined_config():
+    """Load Twitter user configuration with routing information"""
+    return _load_json(combined_config_file, {
+        "users": [],
         "default": {
             "chat_id": None,
             "topic_id": None
@@ -122,18 +121,18 @@ def send_message_with_link(chat_id, message, topic_id=None):
         return None
 
 def twitter_scraper():
-    """Main Twitter scraping function with multi-user to multi-topic mapping"""
-    # Load influencers list
-    with open('influencers.json', 'r') as json_file:
-        usernames = json.load(json_file)
+    """Main Twitter scraping function using combined config"""
+    # Load combined configuration
+    combined_config = load_combined_config()
+    users = combined_config.get('users', [])
+    default_config = combined_config.get('default', {})
+    
+    if not users:
+        print("No users configured in combined_config.json")
+        return
     
     n_tweets = 20
     time_limit = datetime.datetime.now(pytz.utc) - datetime.timedelta(minutes=5)
-    
-    # Load mapping configuration
-    mapping_config = load_mapping_config()
-    mappings = mapping_config.get('mappings', {})
-    default_config = mapping_config.get('default', {})
     
     # Load advertisements
     try:
@@ -148,8 +147,12 @@ def twitter_scraper():
     
     all_tweets_data = {}
     
-    # Scrape tweets for each username
-    for username in usernames:
+    # Scrape tweets for each user
+    for user_config in users:
+        username = user_config.get('username')
+        if not username:
+            continue
+            
         tweets_data = []
         
         try:
@@ -173,43 +176,41 @@ def twitter_scraper():
             continue
         
         if tweets_data:
-            all_tweets_data[username] = tweets_data
+            all_tweets_data[username] = {
+                'tweets': tweets_data,
+                'chat_id': user_config.get('chat_id'),
+                'topic_id': user_config.get('topic_id')
+            }
     
     # Save tweets data
     with open('tweets-data.json', "w") as json_file:
         json.dump(all_tweets_data, json_file)
     
-    # Send tweets using mapping configuration
+    # Send tweets using user-specific routing
     if not all_tweets_data:
         print("No tweets available.")
         return
     
     print("Preparing Tweets...")
     
-    # Process each Twitter user and their mapped destinations
-    for twitter_username, tweets in all_tweets_data.items():
+    # Process each Twitter user and send to their configured destination
+    for username, user_data in all_tweets_data.items():
+        tweets = user_data['tweets']
+        chat_id = user_data['chat_id']
+        topic_id = user_data['topic_id']
+        
         if not tweets:
             continue
-            
-        # Get mapping for this Twitter user
-        user_mapping = mappings.get(twitter_username)
         
-        if not user_mapping:
-            # Use default mapping if specific user mapping not found
+        # Use default config if user doesn't have specific routing
+        if not chat_id:
             if default_config.get('chat_id'):
-                user_mapping = default_config
+                chat_id = default_config['chat_id']
+                topic_id = default_config['topic_id']
             else:
-                print(f"No mapping found for {twitter_username} and no default config")
+                print(f"No chat_id configured for {username} and no default config")
                 continue
         
-        # Extract chat_id and topic_id from mapping
-        chat_id = user_mapping.get('chat_id')
-        topic_id = user_mapping.get('topic_id')
-        
-        if not chat_id:
-            print(f"No chat_id configured for {twitter_username}")
-            continue
-            
         # Get template for this chat
         chat_id_str = str(chat_id)
         template_text = ""
@@ -218,7 +219,7 @@ def twitter_scraper():
         
         # Build message content
         ad_message = f"Ad: [{random_ad['text']}]({random_ad['link']})"
-        title = f"🚀 Tweets from @{twitter_username}\n\n"
+        title = f"🚀 Tweets from @{username}\n\n"
         message = ""
         
         # Add tweet links
@@ -231,12 +232,12 @@ def twitter_scraper():
         message = message.rstrip(" || ")
         
         if not message:
-            print(f"No tweet links generated for {twitter_username}")
+            print(f"No tweet links generated for {username}")
             continue
         
         combined_message = title + message + '\n\n' + ad_message
         
-        print(f"Sending tweets for {twitter_username} to {chat_id} (topic: {topic_id})")
+        print(f"Sending tweets for {username} to {chat_id} (topic: {topic_id})")
         print(combined_message)
         
         # Send message with topic support
@@ -289,7 +290,7 @@ def run_twitter_scraper():
         time.sleep(1)
 
 # Start
-print("Starting Twitter Scraper Bot with multi-user to multi-topic mapping support...")
+print("Starting Twitter Scraper Bot with combined user configuration...")
 twitter_thread = threading.Thread(target=run_twitter_scraper)
 twitter_thread.start()
 bot.polling(none_stop=True, timeout=123)
