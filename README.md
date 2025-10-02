@@ -33,6 +33,33 @@ pip install -r requirements.txt
 
 4. Configure your Twitter users and Telegram destinations (see Configuration section below).
 
+### Activating the Python Virtual Environment
+
+Before installing dependencies or running the bot, activate the Python virtual environment to keep project requirements isolated. If you have not created a venv yet, do so with:
+
+```bash
+python -m venv venv
+```
+
+- On **Windows (Command Prompt/PowerShell):**
+  ```bash
+  .\venv\Scripts\activate
+  ```
+- On **Git Bash (Windows):**
+  ```bash
+  source venv/Scripts/activate
+  ```
+- On **Linux/macOS:**
+  ```bash
+  source venv/bin/activate
+  ```
+
+Then install requirements as usual:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Configuration
 
 All configuration is now handled through a single file: `combined_config.json`. This file contains both the list of Twitter users to monitor and their routing destinations.
@@ -73,7 +100,6 @@ Edit `combined_config.json` to configure which Twitter users to scrape and where
   - `username`: Twitter username (without @)
   - `chat_id`: Telegram chat ID (negative for groups/channels)
   - `topic_id`: Forum topic ID (use `null` for regular groups/channels)
-
 - **default**: Fallback configuration for any errors or unmapped scenarios:
   - `chat_id`: Default Telegram destination
   - `topic_id`: Default topic ID (`null` for no topic)
@@ -88,7 +114,7 @@ Edit `combined_config.json` to configure which Twitter users to scrape and where
 2. **Get Topic IDs (for forum groups only):**
    - Right-click on a topic in the forum group
    - Copy the link and extract the topic ID from the URL
-   - Example: https://t.me/c/1234567890/123/456 → topic ID is 456
+   - Example: `https://t.me/c/1234567890/123/456` → topic ID is 456
 
 3. **Configure users:**
    - Add each Twitter user to the `users` array
@@ -118,7 +144,7 @@ python main.py
    - Send tweets to specific forum topics if configured
    - Include advertisements and custom formatting
 
-Note: It is recommended to run the bot on a server or in the background to ensure continuous scraping and message delivery.
+**Note:** It is recommended to run the bot on a server or in the background to ensure continuous scraping and message delivery.
 
 ### Bot Commands
 
